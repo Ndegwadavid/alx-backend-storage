@@ -1,3 +1,2 @@
-// mongodb file
-#!/usr/bin/env python3
+// Lists all MongoDb databases
 show dbs;
