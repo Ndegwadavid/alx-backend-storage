@@ -1,34 +1,31 @@
 #!/usr/bin/env python3
 """ expiring web cache module """
 
-import redis
 import requests
-from typing import Callable
 from functools import wraps
+from time import time
+from typing import Callable
 
-redis = redis.Redis()
+cache = {}
 
+def cached(expire_time: int = 10):
+    def decorator(func: Callable[[str], str]):
+        @wraps(func)
+        def wrapper(url: str):
+            key = f"count:{url}"
+            if key in cache and time() - cache[key][1] < expire_time:
+                cache[key][0] += 1
+                return cache[key][2]
+            else:
+                result = func(url)
+                cache[key] = [1, time(), result]
+                return result
+        return wrapper
+    return decorator
 
-def wrap_requests(fn: Callable) -> Callable:
-    """ Decorator wrapper """
-
-    @wraps(fn)
-    def wrapper(url):
-        """ Wrapper for decorator guy """
-        redis.incr(f"count:{url}")
-        cached_response = redis.get(f"cached:{url}")
-        if cached_response:
-            return cached_response.decode('utf-8')
-        result = fn(url)
-        redis.setex(f"cached:{url}", 10, result)
-        return result
-
-    return wrapper
-
-
-@wrap_requests
+@cached()
 def get_page(url: str) -> str:
-    """get page self descriptive
-    """
+    print(f"Fetching content from: {url}")
     response = requests.get(url)
     return response.text
+
